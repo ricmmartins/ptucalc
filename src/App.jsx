@@ -10,7 +10,10 @@ import ptuModels from './ptu_supported_models.json';
 import './App.css';
 
 // Import the enhanced pricing service
-import './enhanced_pricing_service.js';{ Checkbox } from '@/components/ui/checkbox.jsx'
+//import './enhanced_pricing_service.js';{ Checkbox } from '@/components/ui/checkbox.jsx'
+import './enhanced_pricing_service.js';
+import { Checkbox } from '@/components/ui/checkbox';
+//
 import { Brain, Globe, MapPin, RefreshCw, Copy, CheckCircle, AlertTriangle, Info, TrendingUp, DollarSign } from 'lucide-react'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 import pricingData from './azure_pricing_data.json'
