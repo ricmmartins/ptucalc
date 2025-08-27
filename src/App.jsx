@@ -5,39 +5,35 @@ import { Input } from './components/ui/input';
 import { Label } from './components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './components/ui/select';
 import { Badge } from './components/ui/badge';
-import { Copy, RefreshCw, TrendingUp, Info, CheckCircle, AlertCircle } from 'lucide-react';
+import { Checkbox } from './components/ui/checkbox';
+import { Alert, AlertDescription } from './components/ui/alert';
+import { Separator } from './components/ui/separator';
+import { Brain, Globe, MapPin, RefreshCw, Copy, CheckCircle, AlertCircle, AlertTriangle, Info, TrendingUp, DollarSign } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import pricingData from './azure_pricing_data.json';
 import ptuModels from './ptu_supported_models.json';
+import AzurePricingService from './pricing_service.js';
+import './enhanced_pricing_service.js';
 import './App.css';
 
-// Import the enhanced pricing service
-//import './enhanced_pricing_service.js';{ Checkbox } from '@/components/ui/checkbox.jsx'
-import './enhanced_pricing_service.js';
-import { Checkbox } from '@/components/ui/checkbox';
-//
-import { Brain, Globe, MapPin, RefreshCw, Copy, CheckCircle, AlertTriangle, Info, TrendingUp, DollarSign } from 'lucide-react'
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
-import pricingData from './azure_pricing_data.json'
-import ptuModels from './ptu_supported_models.json'
-import AzurePricingService from './pricing_service.js'
-import './App.css'
-
 function App() {
-  const [pricingService] = useState(() => new AzurePricingService())
-  const [livePricingData, setLivePricingData] = useState(null)
+  const [pricingService] = useState(() => new AzurePricingService());
+  const [livePricingData, setLivePricingData] = useState(null);
   const [pricingStatus, setPricingStatus] = useState({
     lastRefreshed: new Date().toLocaleString(),
     isLoading: false,
     usingLiveData: false
-  })
-  
-  const [selectedRegion, setSelectedRegion] = useState('east-us-2')
-  const [selectedModel, setSelectedModel] = useState('gpt-4o-mini')
-  const [selectedDeployment, setSelectedDeployment] = useState('data-zone')
-  const [useCustomPricing, setUseCustomPricing] = useState(false)
-  const [customPaygoInput, setCustomPaygoInput] = useState('')
-  const [customPaygoOutput, setCustomPaygoOutput] = useState('')
-  const [customPtuPrice, setCustomPtuPrice] = useState('')
-  
+  });
+
+  const [selectedRegion, setSelectedRegion] = useState('east-us-2');
+  const [selectedModel, setSelectedModel] = useState('gpt-4o-mini');
+  const [selectedDeployment, setSelectedDeployment] = useState('data-zone');
+  const [useCustomPricing, setUseCustomPricing] = useState(false);
+
+  const [customPaygoInput, setCustomPaygoInput] = useState('');
+  const [customPaygoOutput, setCustomPaygoOutput] = useState('');
+  const [customPtuPrice, setCustomPtuPrice] = useState('');
+
   const [formData, setFormData] = useState({
     avgTPM: 5678,
     p99TPM: 12000,
@@ -48,14 +44,14 @@ function App() {
     recommendedPTU: 1,
     monthlyMinutes: 43800,
     basePTUs: 2
-  })
-  
-  const [calculations, setCalculations] = useState({})
+  });
+
+  const [calculations, setCalculations] = useState({});
   const [currentPricing, setCurrentPricing] = useState({
     paygo_input: 0.15,
     paygo_output: 0.60,
     ptu_monthly: 75
-  })
+  });
 
   const kqlQuery = `// Burst-Aware Azure OpenAI PTU Sizing Analysis
 // Run this query in Azure Monitor Log Analytics for accurate capacity planning
@@ -75,69 +71,65 @@ AzureMetrics
     AvgPTU = ceiling(AvgTPM / 50000.0),
     P99PTU = ceiling(P99TPM / 50000.0),
     MaxPTU = ceiling(MaxTPM / 50000.0)
-| extend RecommendedPTU = max_of(AvgPTU, P99PTU)   // higher value covers bursts
-| project AvgTPM, P99TPM, MaxTPM, AvgPTU, P99PTU, MaxPTU, RecommendedPTU`
+| extend RecommendedPTU = max_of(AvgPTU, P99PTU)  // higher value covers bursts
+| project AvgTPM, P99TPM, MaxTPM, AvgPTU, P99PTU, MaxPTU, RecommendedPTU`;
 
   const refreshPricingData = async () => {
-    setPricingStatus(prev => ({ ...prev, isLoading: true }))
-    
+    setPricingStatus(prev => ({ ...prev, isLoading: true }));
+
     try {
-      const liveData = await pricingService.fetchOpenAIPricing()
-      setLivePricingData(liveData)
-      
+      const liveData = await pricingService.fetchOpenAIPricing();
+      setLivePricingData(liveData);
+
       setPricingStatus({
         lastRefreshed: new Date().toLocaleString(),
         isLoading: false,
         usingLiveData: true
-      })
-      
-      console.log('Live pricing data loaded:', liveData)
-      
+      });
+
+      console.log('Live pricing data loaded:', liveData);
     } catch (error) {
-      console.error('Failed to fetch live pricing:', error)
-      
+      console.error('Failed to fetch live pricing:', error);
+
       setPricingStatus({
         lastRefreshed: new Date().toLocaleString(),
         isLoading: false,
         usingLiveData: false
-      })
+      });
     }
-  }
+  };
 
   const copyToClipboard = (text) => {
-    navigator.clipboard.writeText(text)
-  }
+    navigator.clipboard.writeText(text);
+  };
 
   const getCurrentPricing = () => {
     // Use live pricing data if available
     if (livePricingData && pricingStatus.usingLiveData) {
       const livePricing = pricingService.getModelPricing(
-        livePricingData, 
-        selectedModel, 
+        livePricingData,
+        selectedModel,
         selectedRegion.replace('-', ''), // Convert east-us to eastus
-        selectedDeployment === 'global' ? 'global' : 
-        selectedDeployment === 'data-zone' ? 'data-zone' : 'regional'
-      )
-      
+        selectedDeployment === 'global' ? 'global' : selectedDeployment === 'data-zone' ? 'data-zone' : 'regional'
+      );
+
       if (livePricing) {
         return {
           paygo_input: livePricing.paygo_input,
           paygo_output: livePricing.paygo_output,
           ptu_monthly: livePricing.ptu_hourly * 24 * 30 // Convert hourly to monthly
-        }
+        };
       }
     }
-    
+
     // Use enhanced pricing data as fallback
-    const deploymentKey = selectedDeployment === 'global' ? 'Global' :
-                         selectedDeployment === 'data-zone' ? 'Data Zone' : 'Regional';
-    
-    // Try to get pricing from enhanced data
+    const deploymentKey = selectedDeployment === 'global' ? 'Global' : selectedDeployment === 'data-zone' ? 'Data Zone' : 'Regional';
+
     const enhancedData = pricingService.enhancedPricing?.pricing_data;
     if (enhancedData && enhancedData[selectedModel]) {
       const modelKey = `${selectedModel} ${deploymentKey}`;
       const modelPricing = enhancedData[selectedModel][modelKey];
-      
+
       if (modelPricing) {
         return {
           paygo_input: modelPricing.paygo_input || 0.15,
@@ -146,27 +138,26 @@ AzureMetrics
         };
       }
     }
-    
+
     // Final fallback to static pricing data
-    const modelKey = selectedModel === 'gpt-4o' ? 'GPT-4o' : 
-                     selectedModel === 'gpt-4o-mini' ? 'GPT-4o' : 
-                     selectedModel === 'gpt-4.1' ? 'GPT-4.1 series' :
-                     selectedModel === 'gpt-4.1-mini' ? 'GPT-4.1 series' :
-                     selectedModel === 'gpt-4.1-nano' ? 'GPT-4.1 series' :
-                     selectedModel === 'o3' ? 'o3' : 'o4-mini';
-    
-    // Find the specific model variant
+    const modelKey = selectedModel === 'gpt-4o' ? 'GPT-4o' :
+      selectedModel === 'gpt-4o-mini' ? 'GPT-4o' :
+      selectedModel === 'gpt-4.1' ? 'GPT-4.1 series' :
+      selectedModel === 'gpt-4.1-mini' ? 'GPT-4.1 series' :
+      selectedModel === 'gpt-4.1-nano' ? 'GPT-4.1 series' :
+      selectedModel === 'o3' ? 'o3' : 'o4-mini';
+
     const modelData = pricingData.pricing_data[modelKey];
     if (!modelData) return { paygo_input: 0.15, paygo_output: 0.60, ptu_monthly: 75 * 24 * 30 };
-    
-    const variantKey = Object.keys(modelData).find(key => 
-      key.toLowerCase().includes(selectedModel.replace('gpt-', '').replace('.', '')) && 
+
+    const variantKey = Object.keys(modelData).find(key =>
+      key.toLowerCase().includes(selectedModel.replace('gpt-', '').replace('.', '')) &&
       key.includes(deploymentKey)
     );
-    
+
     const variant = modelData[variantKey] || Object.values(modelData)[0];
     const ptuPricing = pricingData.ptu_pricing[selectedModel] || pricingData.ptu_pricing['GPT-4o-mini'];
-    
+
     return {
       paygo_input: variant.paygo_input || 0.15,
       paygo_output: variant.paygo_output || 0.60,
@@ -197,22 +188,19 @@ AzureMetrics
   }, [useCustomPricing, customPaygoInput, customPaygoOutput, customPtuPrice]);
 
   const loadOfficialPricing = async () => {
-    // Try to fetch live pricing data
     setPricingStatus(prev => ({ ...prev, isLoading: true }));
-    
+
     try {
       const liveData = await pricingService.fetchOpenAIPricing();
       setLivePricingData(liveData);
-      
-      // Update pricing with live data
+
       const livePricing = pricingService.getModelPricing(
-        liveData, 
-        selectedModel, 
-        selectedRegion.replace('-', ''), 
-        selectedDeployment === 'global' ? 'global' : 
-        selectedDeployment === 'data-zone' ? 'data-zone' : 'regional'
+        liveData,
+        selectedModel,
+        selectedRegion.replace('-', ''),
+        selectedDeployment === 'global' ? 'global' : selectedDeployment === 'data-zone' ? 'data-zone' : 'regional'
       );
-      
+
       if (livePricing) {
         setCurrentPricing({
           paygo_input: livePricing.paygo_input,
@@ -220,20 +208,19 @@ AzureMetrics
           ptu_monthly: livePricing.ptu_hourly * 24 * 30
         });
       }
-      
+
       setPricingStatus({
         lastRefreshed: new Date().toLocaleString(),
         isLoading: false,
         usingLiveData: true
       });
-      
+
     } catch (error) {
       console.error('Failed to load live pricing:', error);
-      
-      // Fallback to static pricing
+
       const pricing = getCurrentPricing();
       setCurrentPricing(pricing);
-      
+
       setPricingStatus({
         lastRefreshed: new Date().toLocaleString(),
         isLoading: false,
@@ -248,41 +235,41 @@ AzureMetrics
     const burstRatio = formData.p99TPM && formData.avgTPM ? formData.p99TPM / formData.avgTPM : 1;
     const peakRatio = formData.maxTPM && formData.avgTPM ? formData.maxTPM / formData.avgTPM : 1;
     const ptuVariance = formData.p99PTU && formData.avgPTU ? Math.abs(formData.p99PTU - formData.avgPTU) : 0;
-    
+
     // Use RecommendedPTU from KQL if available, otherwise calculate from avgTPM
     const ptuNeeded = formData.recommendedPTU || Math.ceil(formData.avgTPM / 50000);
     const monthlyTokens = (formData.avgTPM * formData.monthlyMinutes) / 1000000; // Convert to millions
-    
+
     // PAYGO cost (assuming 50/50 input/output split)
     const paygoCost = monthlyTokens * ((currentPricing.paygo_input + currentPricing.paygo_output) / 2);
-    
+
     // PTU costs based on recommended PTU sizing
     const ptuOnDemandCost = ptuNeeded * currentPricing.ptu_monthly;
     const ptu1YearCost = ptuOnDemandCost * 0.75; // 25% discount
     const ptu3YearCost = ptuOnDemandCost * 0.60; // 40% discount
-    
+
     // Hybrid costs - use AvgPTU for base, handle overflow with PAYGO
     const basePTUs = formData.avgPTU || formData.basePTUs;
     const hybridBaseCost = basePTUs * currentPricing.ptu_monthly;
-    
+
     // Calculate overflow tokens (P99TPM - base capacity)
     const baseCapacity = basePTUs * 50000;
     const overflowTPM = Math.max(0, formData.p99TPM - baseCapacity);
     const overflowTokens = (overflowTPM * formData.monthlyMinutes) / 1000000;
     const overflowCost = overflowTokens * ((currentPricing.paygo_input + currentPricing.paygo_output) / 2);
-    
+
     const hybridOnDemandCost = hybridBaseCost + overflowCost;
     const hybrid1YearCost = (hybridBaseCost * 0.75) + overflowCost;
     const hybrid3YearCost = (hybridBaseCost * 0.60) + overflowCost;
-    
+
     // Utilization based on average usage vs recommended PTU capacity
     const utilization = (formData.avgTPM / (ptuNeeded * 50000)) * 100;
-    
+
     // Burst characteristics
     const isBursty = burstRatio > 2.0; // P99 is more than 2x average
     const hasSpikes = peakRatio > 3.0; // Max is more than 3x average
     const steadyUsage = burstRatio < 1.5; // P99 is close to average
-    
+
     setCalculations({
       ptuNeeded,
       monthlyTokens,
@@ -295,7 +282,6 @@ AzureMetrics
       hybrid3YearCost,
       utilization,
       costPerMillion: paygoCost / monthlyTokens,
-      // Burst analysis
       burstRatio,
       peakRatio,
       ptuVariance,
@@ -320,74 +306,66 @@ AzureMetrics
 
   const getRecommendation = () => {
     if (!calculations.utilization) return { type: 'PAYGO', reason: 'Calculating...', icon: '⏳' };
-    
-    // Enhanced recommendation logic based on burst patterns and utilization
+
     const { isBursty, hasSpikes, steadyUsage, burstRatio, utilization } = calculations;
-    
-    // Very low utilization - always PAYGO
+
     if (utilization < 15) {
-      return { 
-        type: 'PAYGO', 
+      return {
+        type: 'PAYGO',
         reason: `Very low utilization (${utilization.toFixed(1)}%). PTU reservations would be cost-ineffective. Stick with PAYGO for maximum flexibility.`,
         icon: '❌',
         details: 'Your usage is too low to justify PTU reservations.'
       };
     }
-    
-    // High burst patterns - favor hybrid
+
     if (isBursty && utilization < 50) {
-      return { 
-        type: 'Hybrid Model', 
+      return {
+        type: 'Hybrid Model',
         reason: `High burst pattern detected (${burstRatio.toFixed(1)}x burst ratio). Hybrid model recommended: reserve ${calculations.basePTUs} PTUs for baseline, use PAYGO for ${calculations.overflowTPM.toLocaleString()} TPM overflow.`,
         icon: '⚡',
         details: `Base cost: $${(calculations.basePTUs * currentPricing.ptu_monthly).toFixed(2)}/mo + $${calculations.overflowCost.toFixed(2)}/mo overflow`
       };
     }
-    
-    // Extreme spikes - PAYGO or careful hybrid
+
     if (hasSpikes) {
-      return { 
-        type: 'PAYGO or Careful Hybrid', 
+      return {
+        type: 'PAYGO or Careful Hybrid',
         reason: `Extreme usage spikes detected (${calculations.peakRatio.toFixed(1)}x peak ratio). Consider PAYGO for flexibility, or hybrid with conservative base PTUs.`,
         icon: '🚨',
         details: 'Large spikes make full PTU reservations risky and expensive.'
       };
     }
-    
-    // Steady usage with good utilization - PTU recommended
+
     if (steadyUsage && utilization > 40) {
       const savings3Year = ((calculations.ptuOnDemandCost - calculations.ptu3YearCost) * 36).toFixed(0);
-      return { 
-        type: 'PTU (3 Year)', 
+      return {
+        type: 'PTU (3 Year)',
         reason: `Steady usage pattern (${burstRatio.toFixed(1)}x burst ratio) with good utilization (${utilization.toFixed(1)}%). 3-year PTU reservation offers maximum savings.`,
         icon: '✅',
         details: `Total 3-year savings: $${savings3Year}. Consistent workload justifies long-term commitment.`
       };
     }
-    
-    // Medium utilization with some bursts - hybrid
+
     if (utilization >= 20 && utilization < 60) {
-      return { 
-        type: 'Hybrid Model', 
+      return {
+        type: 'Hybrid Model',
         reason: `Moderate utilization (${utilization.toFixed(1)}%) with burst ratio of ${burstRatio.toFixed(1)}x. Hybrid approach balances cost and flexibility.`,
         icon: '⚠️',
         details: `Reserve ${calculations.basePTUs} PTUs for baseline, handle bursts with PAYGO overflow.`
       };
     }
-    
-    // High utilization - PTU
+
     if (utilization >= 60) {
-      return { 
-        type: 'PTU (1-3 Year)', 
+      return {
+        type: 'PTU (1-3 Year)',
         reason: `High utilization (${utilization.toFixed(1)}%) justifies PTU reservations. Choose 1-year for flexibility or 3-year for maximum savings.`,
         icon: '✅',
         details: 'Sustained high usage makes PTU reservations cost-effective.'
       };
     }
-    
-    // Default fallback
-    return { 
-      type: 'PAYGO', 
+
+    return {
+      type: 'PAYGO',
       reason: 'Current usage patterns suggest PAYGO for optimal cost-effectiveness.',
       icon: '💡',
       details: 'Monitor usage patterns and reassess as workload grows.'
@@ -406,7 +384,7 @@ AzureMetrics
             <h1 className="text-4xl font-bold text-gray-900">Azure OpenAI PTU Estimator</h1>
           </div>
           <p className="text-lg text-gray-600 max-w-3xl mx-auto">
-            Optimize your Azure OpenAI costs by analyzing real usage patterns and comparing 
+            Optimize your Azure OpenAI costs by analyzing real usage patterns and comparing
             PAYGO, PTU, and hybrid pricing models
           </p>
         </div>
@@ -421,12 +399,7 @@ AzureMetrics
               </CardTitle>
               <CardDescription>Azure OpenAI pricing and model availability information</CardDescription>
             </div>
-            <Button 
-              onClick={refreshPricingData} 
-              disabled={pricingStatus.isLoading}
-              variant="outline"
-              size="sm"
-            >
+            <Button onClick={refreshPricingData} disabled={pricingStatus.isLoading} variant="outline" size="sm">
               <RefreshCw className={`h-4 w-4 mr-2 ${pricingStatus.isLoading ? 'animate-spin' : ''}`} />
               Refresh Data
             </Button>
@@ -438,7 +411,7 @@ AzureMetrics
                 <span className="text-sm font-medium">Current pricing data loaded (expires in 3 hours)</span>
               </div>
               <p className="text-sm text-gray-600">Last refreshed: {pricingStatus.lastRefreshed}</p>
-              
+
               <div className="mt-4">
                 <h4 className="font-medium text-sm mb-2">Data Sources</h4>
                 <ul className="text-sm text-gray-600 space-y-1">
@@ -469,27 +442,12 @@ AzureMetrics
                 <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg text-sm overflow-x-auto">
                   <code>{kqlQuery}</code>
                 </pre>
-                <Button
-                  onClick={() => copyToClipboard(kqlQuery)}
-                  size="sm"
-                  variant="outline"
-                  className="absolute top-2 right-2"
-                >
+                <Button onClick={() => copyToClipboard(kqlQuery)} size="sm" variant="outline" className="absolute top-2 right-2">
                   <Copy className="h-4 w-4" />
                 </Button>
               </div>
-              
-              <div className="bg-blue-50 p-4 rounded-lg">
-                <h4 className="font-medium text-sm mb-2">How to use this query:</h4>
-                <ol className="text-sm text-gray-700 space-y-1 list-decimal list-inside">
-                  <li>Navigate to your Azure Log Analytics workspace</li>
-                  <li>Paste and run the query above</li>
-                  <li>The query will show results with AvgTPM, P99TPM, MaxTPM, and RecommendedPTU</li>
-                  <li>Note the "RecommendedPTU" value for your resource and enter it in the calculator below</li>
-                </ol>
-              </div>
 
-              <div className="bg-green-50 p-4 rounded-lg">
+              <div className="bg-blue-50 p-4 rounded-lg">
                 <h4 className="font-medium text-sm mb-2 flex items-center gap-2">
                   💡 Query Features:
                 </h4>
@@ -515,7 +473,6 @@ AzureMetrics
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-              {/* Deployment Type Cards */}
               <div className="space-y-2">
                 <div className="flex items-center gap-2 p-3 border rounded-lg bg-blue-50">
                   <Globe className="h-5 w-5 text-blue-600" />
@@ -525,7 +482,7 @@ AzureMetrics
                   </div>
                 </div>
               </div>
-              
+
               <div className="space-y-2">
                 <div className="flex items-center gap-2 p-3 border rounded-lg bg-green-50">
                   <MapPin className="h-5 w-5 text-green-600" />
@@ -535,7 +492,7 @@ AzureMetrics
                   </div>
                 </div>
               </div>
-              
+
               <div className="space-y-2">
                 <div className="flex items-center gap-2 p-3 border rounded-lg bg-orange-50">
                   <MapPin className="h-5 w-5 text-orange-600" />
@@ -553,7 +510,7 @@ AzureMetrics
                   <CheckCircle className="h-5 w-5 text-green-600" />
                   Official PTU Pricing Loaded
                 </h3>
-                
+
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                   <div className="space-y-2">
                     <Label htmlFor="region">Azure Region</Label>
@@ -563,10 +520,8 @@ AzureMetrics
                       </SelectTrigger>
                       <SelectContent>
                         {Object.entries(ptuModels.regions).map(([key, name]) => {
-                          // Count how many PTU models are available in this region
                           const modelCount = Object.values(ptuModels.ptu_supported_models)
                             .filter(model => model.regions && model.regions.includes(key)).length;
-                          
                           return (
                             <SelectItem key={key} value={key}>
                               {name} ({modelCount} PTU models)
@@ -600,11 +555,9 @@ AzureMetrics
                       </SelectContent>
                     </Select>
                     <p className="text-xs text-gray-600">
-                      Only models that support Provisioned Throughput Units (PTU) are shown. 
-                      Models like DALL-E and TTS do not support PTU reservations.
+                      Only models that support Provisioned Throughput Units (PTU) are shown.
                     </p>
-                    
-                    {/* Minimum PTU Explanation */}
+
                     <div className="bg-amber-50 p-3 rounded-lg mt-2">
                       <h4 className="font-medium text-sm mb-2 flex items-center gap-2">
                         <Info className="h-4 w-4 text-amber-600" />
@@ -651,8 +604,7 @@ AzureMetrics
                         </SelectItem>
                       </SelectContent>
                     </Select>
-                    
-                    {/* PTU Type Explanation */}
+
                     <div className="bg-blue-50 p-3 rounded-lg mt-2">
                       <h4 className="font-medium text-sm mb-2 flex items-center gap-2">
                         <Info className="h-4 w-4 text-blue-600" />
@@ -660,16 +612,13 @@ AzureMetrics
                       </h4>
                       <div className="space-y-2 text-xs text-gray-700">
                         <div>
-                          <strong>Global (PTU-G):</strong> Best for applications requiring global reach and high availability. 
-                          Data processed worldwide with intelligent routing.
+                          <strong>Global (PTU-G):</strong> Best for applications requiring global reach and high availability.
                         </div>
                         <div>
-                          <strong>Data Zone (PTU-D):</strong> Ideal for compliance requirements. 
-                          Data stays within EU or US boundaries for regulatory compliance.
+                          <strong>Data Zone (PTU-D):</strong> Ideal for compliance requirements. Data stays within EU or US boundaries for regulatory compliance.
                         </div>
                         <div>
-                          <strong>Regional (PTU-R):</strong> Optimal for latency-sensitive applications. 
-                          Processing occurs in a single region for fastest response times.
+                          <strong>Regional (PTU-R):</strong> Optimal for latency-sensitive applications. Processing occurs in a single region for fastest response times.
                         </div>
                       </div>
                     </div>
@@ -696,11 +645,7 @@ AzureMetrics
                   </p>
                 </div>
 
-                <Button 
-                  onClick={loadOfficialPricing} 
-                  className="w-full mt-4"
-                  disabled={pricingStatus.isLoading}
-                >
+                <Button onClick={loadOfficialPricing} className="w-full mt-4" disabled={pricingStatus.isLoading}>
                   <RefreshCw className={`h-4 w-4 mr-2 ${pricingStatus.isLoading ? 'animate-spin' : ''}`} />
                   Load Official Pricing
                 </Button>
@@ -709,11 +654,7 @@ AzureMetrics
               {/* Custom Pricing Section */}
               <div className="space-y-4">
                 <div className="flex items-center space-x-2">
-                  <Checkbox 
-                    id="custom-pricing" 
-                    checked={useCustomPricing}
-                    onCheckedChange={setUseCustomPricing}
-                  />
+                  <Checkbox id="custom-pricing" checked={useCustomPricing} onCheckedChange={setUseCustomPricing} />
                   <Label htmlFor="custom-pricing" className="text-sm font-medium">
                     Use Custom Pricing (for negotiated rates with Microsoft)
                   </Label>
@@ -723,36 +664,17 @@ AzureMetrics
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-yellow-50 rounded-lg border">
                     <div className="space-y-2">
                       <Label htmlFor="custom-paygo-input">Custom PAYGO Input Price ($/1M tokens)</Label>
-                      <Input
-                        id="custom-paygo-input"
-                        type="number"
-                        step="0.01"
-                        placeholder="0.15"
-                        value={customPaygoInput}
-                        onChange={(e) => setCustomPaygoInput(e.target.value)}
-                      />
+                      <Input id="custom-paygo-input" type="number" step="0.01" placeholder="0.15" value={customPaygoInput} onChange={(e) => setCustomPaygoInput(e.target.value)} />
                     </div>
+
                     <div className="space-y-2">
                       <Label htmlFor="custom-paygo-output">Custom PAYGO Output Price ($/1M tokens)</Label>
-                      <Input
-                        id="custom-paygo-output"
-                        type="number"
-                        step="0.01"
-                        placeholder="0.60"
-                        value={customPaygoOutput}
-                        onChange={(e) => setCustomPaygoOutput(e.target.value)}
-                      />
+                      <Input id="custom-paygo-output" type="number" step="0.01" placeholder="0.60" value={customPaygoOutput} onChange={(e) => setCustomPaygoOutput(e.target.value)} />
                     </div>
+
                     <div className="space-y-2">
                       <Label htmlFor="custom-ptu">Custom PTU Price ($/hour per PTU)</Label>
-                      <Input
-                        id="custom-ptu"
-                        type="number"
-                        step="0.01"
-                        placeholder="75.00"
-                        value={customPtuPrice}
-                        onChange={(e) => setCustomPtuPrice(e.target.value)}
-                      />
+                      <Input id="custom-ptu" type="number" step="0.01" placeholder="75.00" value={customPtuPrice} onChange={(e) => setCustomPtuPrice(e.target.value)} />
                     </div>
                   </div>
                 )}
@@ -761,112 +683,57 @@ AzureMetrics
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="avg-tpm">Average TPM (from KQL)</Label>
-                  <Input
-                    id="avg-tpm"
-                    type="number"
-                    placeholder="5678"
-                    value={formData.avgTPM}
-                    onChange={(e) => setFormData(prev => ({ ...prev, avgTPM: parseInt(e.target.value) || 0 }))}
-                  />
+                  <Input id="avg-tpm" type="number" placeholder="5678" value={formData.avgTPM} onChange={(e) => setFormData(prev => ({ ...prev, avgTPM: parseInt(e.target.value) || 0 }))} />
                   <p className="text-xs text-gray-600">AvgTPM from your KQL query results</p>
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="p99-tpm">P99 TPM (from KQL)</Label>
-                  <Input
-                    id="p99-tpm"
-                    type="number"
-                    placeholder="12000"
-                    value={formData.p99TPM}
-                    onChange={(e) => setFormData(prev => ({ ...prev, p99TPM: parseInt(e.target.value) || 0 }))}
-                  />
+                  <Input id="p99-tpm" type="number" placeholder="12000" value={formData.p99TPM} onChange={(e) => setFormData(prev => ({ ...prev, p99TPM: parseInt(e.target.value) || 0 }))} />
                   <p className="text-xs text-gray-600">P99TPM - shows burst patterns</p>
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="max-tpm">Max TPM (from KQL)</Label>
-                  <Input
-                    id="max-tpm"
-                    type="number"
-                    placeholder="25000"
-                    value={formData.maxTPM}
-                    onChange={(e) => setFormData(prev => ({ ...prev, maxTPM: parseInt(e.target.value) || 0 }))}
-                  />
+                  <Input id="max-tpm" type="number" placeholder="25000" value={formData.maxTPM} onChange={(e) => setFormData(prev => ({ ...prev, maxTPM: parseInt(e.target.value) || 0 }))} />
                   <p className="text-xs text-gray-600">MaxTPM - absolute peak usage</p>
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="avg-ptu">Average PTU (from KQL)</Label>
-                  <Input
-                    id="avg-ptu"
-                    type="number"
-                    placeholder="1"
-                    value={formData.avgPTU}
-                    onChange={(e) => setFormData(prev => ({ ...prev, avgPTU: parseInt(e.target.value) || 0 }))}
-                  />
+                  <Input id="avg-ptu" type="number" placeholder="1" value={formData.avgPTU} onChange={(e) => setFormData(prev => ({ ...prev, avgPTU: parseInt(e.target.value) || 0 }))} />
                   <p className="text-xs text-gray-600">AvgPTU - average PTU needs</p>
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="p99-ptu">P99 PTU (from KQL)</Label>
-                  <Input
-                    id="p99-ptu"
-                    type="number"
-                    placeholder="1"
-                    value={formData.p99PTU}
-                    onChange={(e) => setFormData(prev => ({ ...prev, p99PTU: parseInt(e.target.value) || 0 }))}
-                  />
+                  <Input id="p99-ptu" type="number" placeholder="1" value={formData.p99PTU} onChange={(e) => setFormData(prev => ({ ...prev, p99PTU: parseInt(e.target.value) || 0 }))} />
                   <p className="text-xs text-gray-600">P99PTU - PTU needs for bursts</p>
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="max-ptu">Max PTU (from KQL)</Label>
-                  <Input
-                    id="max-ptu"
-                    type="number"
-                    placeholder="1"
-                    value={formData.maxPTU}
-                    onChange={(e) => setFormData(prev => ({ ...prev, maxPTU: parseInt(e.target.value) || 0 }))}
-                  />
+                  <Input id="max-ptu" type="number" placeholder="1" value={formData.maxPTU} onChange={(e) => setFormData(prev => ({ ...prev, maxPTU: parseInt(e.target.value) || 0 }))} />
                   <p className="text-xs text-gray-600">MaxPTU - maximum PTU needs</p>
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="recommended-ptu">Recommended PTU (from KQL)</Label>
-                  <Input
-                    id="recommended-ptu"
-                    type="number"
-                    placeholder="1"
-                    value={formData.recommendedPTU}
-                    onChange={(e) => setFormData(prev => ({ ...prev, recommendedPTU: parseInt(e.target.value) || 0 }))}
-                  />
+                  <Input id="recommended-ptu" type="number" placeholder="1" value={formData.recommendedPTU} onChange={(e) => setFormData(prev => ({ ...prev, recommendedPTU: parseInt(e.target.value) || 0 }))} />
                   <p className="text-xs text-gray-600">RecommendedPTU - KQL's sizing recommendation</p>
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="minutes">Monthly Active Minutes</Label>
-                  <Input
-                    id="minutes"
-                    type="number"
-                    placeholder="43800"
-                    value={formData.monthlyMinutes}
-                    onChange={(e) => setFormData(prev => ({ ...prev, monthlyMinutes: parseInt(e.target.value) || 0 }))}
-                  />
+                  <Input id="minutes" type="number" placeholder="43800" value={formData.monthlyMinutes} onChange={(e) => setFormData(prev => ({ ...prev, monthlyMinutes: parseInt(e.target.value) || 0 }))} />
                   <p className="text-xs text-gray-600">Total minutes of usage per month</p>
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="base-ptus">Base PTUs (for Hybrid Model)</Label>
-                  <Input
-                    id="base-ptus"
-                    type="number"
-                    placeholder="1"
-                    value={formData.basePTUs}
-                    onChange={(e) => setFormData(prev => ({ ...prev, basePTUs: parseInt(e.target.value) || 0 }))}
-                  />
+                  <Input id="base-ptus" type="number" placeholder="1" value={formData.basePTUs} onChange={(e) => setFormData(prev => ({ ...prev, basePTUs: parseInt(e.target.value) || 0 }))} />
                   <p className="text-xs text-gray-600">Base PTU reservation for hybrid approach</p>
-                  
-                  {/* Hybrid Spillover Explanation */}
+
                   <div className="bg-green-50 p-3 rounded-lg mt-2">
                     <h4 className="font-medium text-sm mb-2 flex items-center gap-2">
                       <Info className="h-4 w-4 text-green-600" />
@@ -932,10 +799,12 @@ AzureMetrics
                   <Info className="h-5 w-5" />
                   PTU Efficiency & Burst Analysis
                 </h3>
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-3 text-sm">
                     <p>
-                      <strong className="text-orange-800">PTU Utilization:</strong> {calculations.utilization?.toFixed(1) || '0.0'}% 
+                      <strong className="text-orange-800">PTU Utilization:</strong>
+                      {calculations.utilization?.toFixed(1) || '0.0'}%
                       <span className="text-gray-600"> ({formData.avgTPM.toLocaleString()} TPM out of {(calculations.ptuNeeded || 1) * 50000} TPM capacity)</span>
                     </p>
                     <p>
@@ -949,29 +818,21 @@ AzureMetrics
                   <div className="space-y-3 text-sm">
                     <p>
                       <strong className="text-orange-800">Burst Pattern:</strong> {calculations.burstRatio?.toFixed(1) || '1.0'}x burst ratio
-                      <span className="text-gray-600"> (P99/Avg TPM)</span>
+                      <span className="text-gray-600">(P99/Avg TPM)</span>
                     </p>
                     <p>
                       <strong className="text-orange-800">Peak Spikes:</strong> {calculations.peakRatio?.toFixed(1) || '1.0'}x peak ratio
                       <span className="text-gray-600"> (Max/Avg TPM)</span>
                     </p>
                     <p>
-                      <strong className="text-orange-800">Usage Pattern:</strong> 
-                      <span className={`ml-2 px-2 py-1 rounded text-xs font-medium ${
-                        calculations.steadyUsage ? 'bg-green-100 text-green-800' : 
-                        calculations.isBursty ? 'bg-yellow-100 text-yellow-800' : 
-                        calculations.hasSpikes ? 'bg-red-100 text-red-800' : 
-                        'bg-gray-100 text-gray-800'
-                      }`}>
-                        {calculations.steadyUsage ? 'Steady' : 
-                         calculations.isBursty ? 'Bursty' : 
-                         calculations.hasSpikes ? 'Spiky' : 'Variable'}
+                      <strong className="text-orange-800">Usage Pattern:</strong>
+                      <span className={`ml-2 px-2 py-1 rounded text-xs font-medium ${calculations.steadyUsage ? 'bg-green-100 text-green-800' : calculations.isBursty ? 'bg-yellow-100 text-yellow-800' : calculations.hasSpikes ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-800'}`}>
+                        {calculations.steadyUsage ? 'Steady' : calculations.isBursty ? 'Bursty' : calculations.hasSpikes ? 'Spiky' : 'Variable'}
                       </span>
                     </p>
                   </div>
                 </div>
-                
-                {/* Enhanced Recommendation */}
+
                 <div className="mt-4 p-4 bg-white rounded-lg border">
                   <div className="flex items-start gap-3">
                     <span className="text-2xl">{recommendation.icon}</span>
@@ -985,7 +846,6 @@ AzureMetrics
                   </div>
                 </div>
 
-                {/* Hybrid Model Details */}
                 {calculations.overflowCost > 0 && (
                   <div className="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
                     <h4 className="font-medium text-blue-800 mb-2">Hybrid Model Breakdown</h4>
@@ -1013,14 +873,14 @@ AzureMetrics
                   <TrendingUp className="h-5 w-5" />
                   Reservation Savings Opportunity
                 </h3>
-                
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                   <div className="text-center">
                     <h4 className="font-medium text-gray-700 mb-2">1-Year Reservation</h4>
                     <p className="text-3xl font-bold text-green-600">${((calculations.ptuOnDemandCost || 0) - (calculations.ptu1YearCost || 0)).toFixed(2)}/mo</p>
                     <p className="text-sm text-green-600 font-medium">25.0% savings</p>
                   </div>
-                  
+
                   <div className="text-center">
                     <h4 className="font-medium text-gray-700 mb-2">3-Year Reservation</h4>
                     <p className="text-3xl font-bold text-green-600">${((calculations.ptuOnDemandCost || 0) - (calculations.ptu3YearCost || 0)).toFixed(2)}/mo</p>
@@ -1088,20 +948,20 @@ AzureMetrics
                   <RefreshCw className="h-5 w-5" />
                   Hybrid Options <Badge variant="outline" className="ml-2">Base + Spillover</Badge>
                 </h3>
-                
+
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="bg-white p-4 rounded-lg">
                     <h4 className="font-medium text-lg">Hybrid (On-Demand)</h4>
                     <p className="text-2xl font-bold text-orange-600">${calculations.hybridOnDemandCost?.toFixed(2) || '0.00'}</p>
                     <p className="text-sm text-gray-600">Base: ${calculations.hybridOnDemandCost?.toFixed(2) || '0.00'} + Spillover: $0.00</p>
                   </div>
-                  
+
                   <div className="bg-white p-4 rounded-lg">
                     <h4 className="font-medium text-lg">Hybrid (1 Year)</h4>
                     <p className="text-2xl font-bold text-orange-600">${calculations.hybrid1YearCost?.toFixed(2) || '0.00'}</p>
                     <p className="text-sm text-gray-600">Base: ${calculations.hybrid1YearCost?.toFixed(2) || '0.00'} + Spillover: $0.00</p>
                   </div>
-                  
+
                   <div className="bg-white p-4 rounded-lg">
                     <h4 className="font-medium text-lg">Hybrid (3 Year)</h4>
                     <p className="text-2xl font-bold text-orange-600">${calculations.hybrid3YearCost?.toFixed(2) || '0.00'}</p>
@@ -1180,22 +1040,18 @@ AzureMetrics
         </div>
 
         {/* PTU Cost-Effectiveness Guidelines */}
-        <Card>
+        <Card> 
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Info className="h-5 w-5 text-blue-600" />
               PTU Cost-Effectiveness Guidelines
             </CardTitle>
-            <CardDescription>
-              Understand when to use PAYGO, Hybrid, or full PTU reservations based on your usage patterns
-            </CardDescription>
+            <CardDescription>Essential information for understanding Azure OpenAI pricing and deployment options</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="space-y-3">
-                <h4 className="font-medium text-lg flex items-center gap-2">
-                  ❌ Stay on PAYGO
-                </h4>
+                <h4 className="font-medium text-lg flex items-center gap-2">❌ Stay on PAYGO</h4>
                 <div className="space-y-2 text-sm">
                   <p><strong>TPM Range:</strong> &lt;10,000 TPM</p>
                   <p><strong>PTU Utilization:</strong> &lt;20% capacity</p>
@@ -1205,9 +1061,7 @@ AzureMetrics
               </div>
 
               <div className="space-y-3">
-                <h4 className="font-medium text-lg flex items-center gap-2">
-                  ⚠️ Consider Hybrid Model
-                </h4>
+                <h4 className="font-medium text-lg flex items-center gap-2">⚠️ Consider Hybrid Model</h4>
                 <div className="space-y-2 text-sm">
                   <p><strong>TPM Range:</strong> 10,000-30,000 TPM</p>
                   <p><strong>Strategy:</strong> Base PTUs + PAYGO overflow</p>
@@ -1217,9 +1071,7 @@ AzureMetrics
               </div>
 
               <div className="space-y-3">
-                <h4 className="font-medium text-lg flex items-center gap-2">
-                  ✅ Full PTU Reservation
-                </h4>
+                <h4 className="font-medium text-lg flex items-center gap-2">✅ Full PTU Reservation</h4>
                 <div className="space-y-2 text-sm">
                   <p><strong>TPM Range:</strong> &gt;30,000 TPM sustained</p>
                   <p><strong>PTU Utilization:</strong> &gt;60% capacity</p>
@@ -1232,13 +1084,11 @@ AzureMetrics
             <Separator className="my-6" />
 
             <div className="space-y-4">
-              <h4 className="font-medium text-lg flex items-center gap-2">
-                📊 Key Decision Factors
-              </h4>
+              <h4 className="font-medium text-lg flex items-center gap-2">📊 Key Decision Factors</h4>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                 <div className="space-y-2">
                   <p>• <strong>Usage Consistency:</strong> PTUs work best for predictable, sustained workloads</p>
-                  <p>• <strong>Capacity Planning:</strong> Each PTU = 50,000 tokens/minute guaranteed throughput</p>
+                  <p>• <strong>Capacity Planning:</strong> Each PTU = 50,000 tokens/minute guaranteed throughput capacity</p>
                 </div>
                 <div className="space-y-2">
                   <p>• <strong>Break-Even Point:</strong> PTUs typically become cost-effective at 60%+ utilization</p>
@@ -1269,9 +1119,7 @@ AzureMetrics
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-3">
-                <h4 className="font-medium text-lg flex items-center gap-2">
-                  ✅ Next Steps
-                </h4>
+                <h4 className="font-medium text-lg flex items-center gap-2">✅ Next Steps</h4>
                 <ol className="text-sm space-y-1 list-decimal list-inside">
                   <li>Continue with your current PAYGO setup</li>
                   <li>Monitor usage patterns for future optimization</li>
@@ -1280,9 +1128,7 @@ AzureMetrics
               </div>
 
               <div className="space-y-3">
-                <h4 className="font-medium text-lg flex items-center gap-2">
-                  ⚠️ Considerations
-                </h4>
+                <h4 className="font-medium text-lg flex items-center gap-2">⚠️ Considerations</h4>
                 <ul className="text-sm space-y-1">
                   <li>• No commitment but higher per-token costs</li>
                   <li>• Best for variable or experimental workloads</li>
@@ -1294,9 +1140,7 @@ AzureMetrics
             <Separator className="my-6" />
 
             <div className="bg-gray-50 p-4 rounded-lg">
-              <h4 className="font-medium text-lg flex items-center gap-2 mb-4">
-                📊 Analysis Summary
-              </h4>
+              <h4 className="font-medium text-lg flex items-center gap-2 mb-4">📊 Analysis Summary</h4>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                 <div>
                   <p className="font-medium">Current TPM</p>
@@ -1335,34 +1179,34 @@ AzureMetrics
                   <h4 className="font-medium">PTU Conversion Rate (50,000)</h4>
                   <p className="text-gray-600">Microsoft's official standard - each PTU provides exactly 50,000 tokens/minute of sustained throughput capacity according to Azure OpenAI documentation.</p>
                 </div>
-                
+
                 <div>
                   <h4 className="font-medium">Base PTUs for Hybrid Model</h4>
                   <p className="text-gray-600">Reserve a fixed number of PTUs (e.g., 2 PTUs = 100k tokens/min guaranteed) for your baseline usage, with automatic PAYGO billing when demand exceeds reserved capacity.</p>
                 </div>
-                
+
                 <div>
                   <h4 className="font-medium">Hybrid Strategy Benefits</h4>
                   <p className="text-gray-600">Combines predictable costs (PTU reservation) with elastic scalability (PAYGO overflow) - optimal for workloads with variable demand patterns.</p>
                 </div>
-                
+
                 <div>
                   <h4 className="font-medium">Deployment Type Pricing</h4>
                   <p className="text-gray-600">Global deployments typically cost 20-40% more than Regional deployments, with Data Zone deployments priced between the two.</p>
                 </div>
               </div>
-              
+
               <div className="space-y-4">
                 <div>
                   <h4 className="font-medium">PTU vs PAYGO</h4>
                   <p className="text-gray-600">PTU pricing offers 20-40% savings for sustained high-volume usage but requires monthly commitment, while PAYGO provides flexibility without commitment.</p>
                 </div>
-                
+
                 <div>
                   <h4 className="font-medium">Monthly Minutes</h4>
                   <p className="text-gray-600">Default 43,800 minutes assumes continuous 24/7 usage (30.4 days × 24 hours × 60 minutes).</p>
                 </div>
-                
+
                 <div>
                   <h4 className="font-medium">Dynamic Pricing Updates</h4>
                   <p className="text-gray-600">The app uses AI analysis of official Azure OpenAI documentation to ensure current pricing accuracy and model availability.</p>
@@ -1385,20 +1229,16 @@ AzureMetrics
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
               <div className="space-y-4">
                 <div>
-                  <h4 className="font-medium flex items-center gap-2">
-                    📍 Geographic Constraints
-                  </h4>
+                  <h4 className="font-medium flex items-center gap-2">📍 Geographic Constraints</h4>
                   <ul className="text-gray-600 space-y-1">
                     <li>• Reservations are region-locked (cannot transfer)</li>
                     <li>• Must commit to specific Azure region</li>
                     <li>• Plan for geographic redundancy separately</li>
                   </ul>
                 </div>
-                
+
                 <div>
-                  <h4 className="font-medium flex items-center gap-2">
-                    🔄 Flexibility & Changes
-                  </h4>
+                  <h4 className="font-medium flex items-center gap-2">🔄 Flexibility & Changes</h4>
                   <ul className="text-gray-600 space-y-1">
                     <li>• Use reserved PTUs with any supported model</li>
                     <li>• Purchase additional on-demand PTUs as needed</li>
@@ -1406,23 +1246,19 @@ AzureMetrics
                   </ul>
                 </div>
               </div>
-              
+
               <div className="space-y-4">
                 <div>
-                  <h4 className="font-medium flex items-center gap-2">
-                    💳 Payment & Commitment
-                  </h4>
+                  <h4 className="font-medium flex items-center gap-2">💳 Payment & Commitment</h4>
                   <ul className="text-gray-600 space-y-1">
                     <li>• 30-day cancellation window after purchase</li>
                     <li>• Choose: upfront payment (max savings) or monthly</li>
                     <li>• Full commitment for selected term (1 or 3 years)</li>
                   </ul>
                 </div>
-                
+
                 <div>
-                  <h4 className="font-medium flex items-center gap-2">
-                    📈 Capacity & Scaling
-                  </h4>
+                  <h4 className="font-medium flex items-center gap-2">📈 Capacity & Scaling</h4>
                   <ul className="text-gray-600 space-y-1">
                     <li>• Guaranteed capacity in selected region</li>
                     <li>• Protection against demand spikes</li>
@@ -1435,8 +1271,7 @@ AzureMetrics
         </Card>
       </div>
     </div>
-  )
+  );
 }
 
-export default App
-
+export default App;
